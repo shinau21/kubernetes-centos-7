@@ -1,0 +1,100 @@
+#
+#   Shinau Lee Been Vinter
+#   
+#   Copyright © 2020 Rafli Setiawan
+#   https://t.me/bkprogrammer
+#
+#   
+#   In the file /etc/hosts Use the IP Address that you use,
+#   and the hostname that is used according to the IP address on your CentOS 7.
+#   On Here I use IP :
+#   192.168.11.252 for master.raflisetiawan.local
+#   192.168.11.253 for node1.raflisetiawan.local
+#
+#   Your can change with your IP address on file 3../in directory command
+#
+---
+- name: This sets up an Kubernetes
+  hosts: all
+  tasks:
+  - name: Update Package
+    yum:
+      name: "*"
+      state: latest
+  - name: Install Git & Curl
+    yum:
+      name: git
+      state: present
+  - name: Clone Repository
+    shell:
+      cmd: git clone https://github.com/shinau21/k8s.git
+    args:
+      chdir: $HOME/
+  - name: Change Permision On Directory k8s
+    shell:
+      cmd: chmod 755 *.bash
+    args:
+      chdir: $HOME/k8s/  
+  - name: Prepare
+    shell:
+      cmd: ./1.bash
+    args:
+      chdir: $HOME/k8s/
+  - name: Disable SELinux
+    lineinfile:
+      path: /etc/sysconfig/selinux
+      regexp: 'SELINUX=enforcing'
+      line: 'SELINUX=disabled'
+  - name: Stop Service Firewalld
+    service:
+      name: firewalld
+      state: stopped
+  - name: Disable Firewalld Service
+    service:
+      name: firewalld
+      enabled: no
+  - name: Setting Bridge On Sysctl
+    shell:
+      cmd: ./2.bash
+    args:
+      chdir: $HOME/k8s/
+  - name: Disable Swap
+    lineinfile:
+      path: /etc/fstab
+      regexp: '/dev/mapper/centos-swap'
+      line: '#/dev/mapper/centos-swap'
+  - name: Register Host On /etc/hosts
+    shell:
+      cmd: ./3.bash
+    args:
+      chdir: $HOME/k8s/
+  - name: Add Repo Kubernetes
+    shell:
+      cmd: ./4.bash
+    args:
+      chdir: $HOME/k8s/
+  - name: Install Kubernetes & Docker 
+    yum:
+      name: "{{ item }}"
+      state: present
+      with_items:
+        - kubeadm
+        - kubectl
+        - kubelet
+        - docker
+  - name: Restart Docker Service
+    service:
+      name: docker 
+      state: restarted
+  - name: Enable Docker Service On Startup
+    service:
+      name: docker
+      enabled: yes
+  - name: Restart Kubelet Service
+    service:
+      name: kubelet 
+      state: restarted
+  - name: Enable Kubelet Service On Startup
+    service:
+      name: kubelet
+      enabled: yes
